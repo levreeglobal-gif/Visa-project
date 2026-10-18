@@ -1,0 +1,9 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { listBlogPosts } from '@/lib/server/blog';
+import { publicSite } from '@/lib/server/cms';
+export const revalidate = 300;
+const slugify = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+export async function generateStaticParams() { try { return [...new Set((await listBlogPosts()).map((p) => slugify(p.category)))].map((category) => ({ category })); } catch { return []; } }
+export async function generateMetadata({ params }: { params: Promise<{ category: string }> }): Promise<Metadata> { const { category } = await params; const label = category.split('-').map((x) => x.charAt(0).toUpperCase() + x.slice(1)).join(' '); const site = await publicSite(); return { title: `${label} — Visa Guidance`, description: `Roopo Visa articles and practical guidance about ${label.toLowerCase()}.`, alternates: { canonical: `${site.url}/blog/category/${category}` } }; }
+export default async function BlogCategory({ params }: { params: Promise<{ category: string }> }) { const { category } = await params; const posts = (await listBlogPosts()).filter((p) => slugify(p.category) === category); const label = posts[0]?.category || category.split('-').join(' '); return <div className="wrap page-shell"><section className="section"><p className="eyebrow">BLOG CATEGORY</p><h1>{label}</h1><div className="blog-grid">{posts.map((p) => <article className="service-card" key={p.id}><p className="eyebrow">{p.category}</p><h3><Link href={`/blog/${p.slug}`}>{p.title}</Link></h3><p>{p.excerpt}</p><Link className="text-link" href={`/blog/${p.slug}`}>Read article ↗</Link></article>)}</div>{posts.length === 0 && <p>No published articles in this category yet.</p>}<p><Link className="text-link" href="/blog">← All articles</Link></p></section></div>; }
